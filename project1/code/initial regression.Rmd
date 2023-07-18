@@ -1,0 +1,119 @@
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+# ddddddddddddddddddddddddddddddd
+setwd("D:/Study/sustainability/ottawa_sus/project1")
+
+
+# download network data of construction companies
+splc <- read_excel("data/raw/SPLC_NA.xlsx", sheet=2)
+
+# exclude NAs, convert column
+splc <- splc %>% 
+  filter(Ticker != "BDGI CN" & Ticker != 'J US') %>% 
+  mutate(Number = as.numeric(Number))
+  
+# aggregated connections of each ticker
+splc %>% 
+  group_by(Year,Ticker) %>% 
+  summarise(Number = sum(Number)) %>%
+  ggplot(aes(x = Year, y = Number, color = Ticker)) +
+  geom_line()
+
+# aggregated connections
+splc %>% 
+  group_by(Year) %>% 
+  summarize(Number = sum(Number)) %>% 
+  ggplot(aes(x = Year, y = Number)) +
+  geom_line()
+
+# connections with customer&supplier
+splc %>% 
+  group_by(Year,Type) %>% 
+  summarize(Number = sum(Number)) %>% 
+  ggplot(aes(x = Year, y = Number, color = Type)) + 
+  geom_line()
+
+# tickers with high supply chain
+splc %>% 
+  group_by(Ticker) %>% 
+  filter(mean(Number) >= 17) %>%
+  group_by(Year,Ticker) %>% 
+  summarise(Number = sum(Number)) %>%
+  ggplot(aes(x = Year, y = Number, color = Ticker)) +
+  geom_line()
+
+# tickers with low supply chain
+splc %>% 
+  group_by(Ticker) %>% 
+  filter(mean(Number) < 17) %>%
+  group_by(Year,Ticker) %>% 
+  summarise(Number = sum(Number)) %>%
+  ggplot(aes(x = Year, y = Number, color = Ticker)) +
+  geom_line()
+
+
+# download sustainability data
+sus <- read_excel("data/raw/C&S.xlsx") %>% 
+  filter(Country %in% c('CANADA','UNITED STATES')) %>% 
+  mutate_at(5:ncol(.),as.numeric) %>%
+# exclude Tickets without any sustainability data
+  filter(!rowSums(is.na(.[,5:ncol(.)])) == ncol(.)-4) %>% 
+# exclude ESG Disclosure Score for 2013,2014 ()
+  select(-c(RX317_FY2013,RX317_FY2014))
+
+# remove all ESG data
+sus <- sus %>% 
+  select(-c(RX317_FY2015,RX317_FY2016,RX317_FY2016,
+            RX317_FY2017,RX317_FY2018,RX317_FY2019,
+            RX317_FY2020,RX317_FY2021))
+
+# remove Tickers with all NAs
+sus <- sus %>% 
+  filter(!rowSums(is.na(.[,5:ncol(.)])) == ncol(.)-4)
+
+# keep companies without NAs
+sus <- sus %>% 
+  filter(!Ticker %in% c("FTDR US", "DY US"))
+
+# format to long
+sus_long <- sus %>%
+  pivot_longer(cols = starts_with("SR"), 
+               names_to = "variable", 
+               values_to = "value") %>%
+  separate(variable, 
+           c("SR_variable", "Year"), 
+           sep = "_FY") %>%
+  mutate(Year = as.numeric(Year)) %>% 
+  pivot_wider(names_from = SR_variable, 
+              values_from = value)
+
+# aggregate connections with Suppliers and Customers
+splc_aggr <- splc %>% 
+  group_by(Ticker,Year) %>% 
+  summarize(Number = sum(Number))
+
+
+# merge with network data
+merged_df <- left_join(sus_long, splc_aggr, by = c('Year' = 'Year', 'Ticker' = 'Ticker'))
+remove(sus,sus_long,splc,splc_aggr)
+
+# exclude Tickerts with NAs in Number
+merged_df <- merged_df %>% 
+  filter(!Ticker %in% c('J US', 'BLD US'))
+
+# correlation analysis
+sr_cols <- grep('^SR', names(merged_df), value = T)
+correlations <- sapply(sr_cols, function(x) 
+                       cor(merged_df[[x]],merged_df$Number))
+correlations <- sapply(sr_cols, function(x) cor(merged_df[[x]], merged_df$Number))
+
+cor_df <- data.frame(SR_variable = sr_cols, Correlation = correlations)
+
+# upload to github
+
+
+
