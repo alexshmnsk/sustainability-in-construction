@@ -4,7 +4,7 @@ library(dplyr)
 library(tidyr)
 library(readr)
 
-# ddddddddddddddddddddddddddddddd
+# ddddddddddddddddddddddddddddddddddddddd
 setwd("D:/Study/sustainability/ottawa_sus/project1")
 
 
