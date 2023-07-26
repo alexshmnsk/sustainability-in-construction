@@ -1,39 +1,21 @@
----
-title: "Regression to test initial hypothesis (more links better sustainability)"
-author: "AlexSh"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    theme: cosmo
----
-
-```{r load libraries}
-library(tidyverse)
-library(knitr)
-library(rmarkdown)
 library(readxl)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(readr)
-```
 
 
-```{r}
-# set work directory
-setwd("D:/Study/sustainability/sustainability-in-construction/project1")
+setwd("D:/Study/sustainability/project1")
+
+
 # download network data of construction companies
 splc <- read_excel("data/raw/SPLC_NA.xlsx", sheet=2)
+
 # exclude NAs, convert column
 splc <- splc %>% 
   filter(Ticker != "BDGI CN" & Ticker != 'J US') %>% 
   mutate(Number = as.numeric(Number))
-```
-
-
-```{r}
+  
 # aggregated connections of each ticker
 splc %>% 
   group_by(Year,Ticker) %>% 
@@ -72,31 +54,31 @@ splc %>%
   summarise(Number = sum(Number)) %>%
   ggplot(aes(x = Year, y = Number, color = Ticker)) +
   geom_line()
-```
 
-```{r}
+
 # download sustainability data
 sus <- read_excel("data/raw/C&S.xlsx") %>% 
   filter(Country %in% c('CANADA','UNITED STATES')) %>% 
   mutate_at(5:ncol(.),as.numeric) %>%
 # exclude Tickets without any sustainability data
   filter(!rowSums(is.na(.[,5:ncol(.)])) == ncol(.)-4) %>% 
-# exclude all ESG Disclosure Score data
+# exclude ESG Disclosure Score for 2013,2014 ()
+  select(-c(RX317_FY2013,RX317_FY2014))
+
+# remove all ESG data
+sus <- sus %>% 
   select(-c(RX317_FY2015,RX317_FY2016,RX317_FY2016,
             RX317_FY2017,RX317_FY2018,RX317_FY2019,
             RX317_FY2020,RX317_FY2021))
-```
 
-```{r}
 # remove Tickers with all NAs
 sus <- sus %>% 
   filter(!rowSums(is.na(.[,5:ncol(.)])) == ncol(.)-4)
+
 # keep companies without NAs
 sus <- sus %>% 
   filter(!Ticker %in% c("FTDR US", "DY US"))
-```
 
-```{r}
 # format to long
 sus_long <- sus %>%
   pivot_longer(cols = starts_with("SR"), 
@@ -109,24 +91,20 @@ sus_long <- sus %>%
   pivot_wider(names_from = SR_variable, 
               values_from = value)
 
-# add number of suppliers to number of customers
+# aggregate connections with Suppliers and Customers
 splc_aggr <- splc %>% 
   group_by(Ticker,Year) %>% 
   summarize(Number = sum(Number))
-```
 
 
-```{r}
 # merge with network data
 merged_df <- left_join(sus_long, splc_aggr, by = c('Year' = 'Year', 'Ticker' = 'Ticker'))
 remove(sus,sus_long,splc,splc_aggr)
 
-# exclude Tickers with NAs in Number
+# exclude Tickerts with NAs in Number
 merged_df <- merged_df %>% 
   filter(!Ticker %in% c('J US', 'BLD US'))
-```
 
-```{r}
 # correlation analysis
 sr_cols <- grep('^SR', names(merged_df), value = T)
 correlations <- sapply(sr_cols, function(x) 
@@ -134,7 +112,8 @@ correlations <- sapply(sr_cols, function(x)
 correlations <- sapply(sr_cols, function(x) cor(merged_df[[x]], merged_df$Number))
 
 cor_df <- data.frame(SR_variable = sr_cols, Correlation = correlations)
-```
+
+# upload to github
 
 
 
