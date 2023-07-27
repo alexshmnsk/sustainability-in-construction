@@ -23,9 +23,9 @@ library(readr)
 
 ```{r}
 # set work directory
-setwd("D:/Study/sustainability/sustainability-in-construction/project1")
+#setwd("D:/Study/sustainability/sustainability-in-construction")
 # download network data of construction companies
-splc <- read_excel("data/raw/SPLC_NA.xlsx", sheet=2)
+splc <- read_excel("../data/raw/SPLC_NA.xlsx", sheet=2)
 # exclude NAs, convert column
 splc <- splc %>% 
   filter(Ticker != "BDGI CN" & Ticker != 'J US') %>% 
@@ -76,7 +76,7 @@ splc %>%
 
 ```{r}
 # download sustainability data
-sus <- read_excel("data/raw/C&S.xlsx") %>% 
+sus <- read_excel("../data/raw/C&S.xlsx") %>% 
   filter(Country %in% c('CANADA','UNITED STATES')) %>% 
   mutate_at(5:ncol(.),as.numeric) %>%
 # exclude Tickets without any sustainability data
