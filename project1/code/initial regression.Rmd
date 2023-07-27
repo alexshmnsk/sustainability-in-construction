@@ -22,18 +22,16 @@ library(readr)
 
 
 ```{r}
-# set work directory
-#setwd("D:/Study/sustainability/sustainability-in-construction")
 # download network data of construction companies
 splc <- read_excel("../data/raw/SPLC_NA.xlsx", sheet=2)
-# exclude NAs, convert column
+# exclude NAs, convert column to numeric
 splc <- splc %>% 
   filter(Ticker != "BDGI CN" & Ticker != 'J US') %>% 
   mutate(Number = as.numeric(Number))
 ```
 
 
-```{r}
+```{r data visualization}
 # aggregated connections of each ticker
 splc %>% 
   group_by(Year,Ticker) %>% 
@@ -74,7 +72,7 @@ splc %>%
   geom_line()
 ```
 
-```{r}
+```{r download dep var}
 # download sustainability data
 sus <- read_excel("../data/raw/C&S.xlsx") %>% 
   filter(Country %in% c('CANADA','UNITED STATES')) %>% 
@@ -82,12 +80,14 @@ sus <- read_excel("../data/raw/C&S.xlsx") %>%
 # exclude Tickets without any sustainability data
   filter(!rowSums(is.na(.[,5:ncol(.)])) == ncol(.)-4) %>% 
 # exclude all ESG Disclosure Score data
-  select(-c(RX317_FY2015,RX317_FY2016,RX317_FY2016,
-            RX317_FY2017,RX317_FY2018,RX317_FY2019,
+  select(-c(RX317_FY2013,RX317_FY2014,
+            RX317_FY2015,RX317_FY2016,
+            RX317_FY2016,RX317_FY2017,
+            RX317_FY2018,RX317_FY2019,
             RX317_FY2020,RX317_FY2021))
 ```
 
-```{r}
+```{r clean dep var}
 # remove Tickers with all NAs
 sus <- sus %>% 
   filter(!rowSums(is.na(.[,5:ncol(.)])) == ncol(.)-4)
@@ -96,7 +96,7 @@ sus <- sus %>%
   filter(!Ticker %in% c("FTDR US", "DY US"))
 ```
 
-```{r}
+```{r change dep var to long}
 # format to long
 sus_long <- sus %>%
   pivot_longer(cols = starts_with("SR"), 
@@ -116,7 +116,7 @@ splc_aggr <- splc %>%
 ```
 
 
-```{r}
+```{r merge dep with indep var}
 # merge with network data
 merged_df <- left_join(sus_long, splc_aggr, by = c('Year' = 'Year', 'Ticker' = 'Ticker'))
 remove(sus,sus_long,splc,splc_aggr)
@@ -126,7 +126,7 @@ merged_df <- merged_df %>%
   filter(!Ticker %in% c('J US', 'BLD US'))
 ```
 
-```{r}
+```{r correlation}
 # correlation analysis
 sr_cols <- grep('^SR', names(merged_df), value = T)
 correlations <- sapply(sr_cols, function(x) 
@@ -134,6 +134,9 @@ correlations <- sapply(sr_cols, function(x)
 correlations <- sapply(sr_cols, function(x) cor(merged_df[[x]], merged_df$Number))
 
 cor_df <- data.frame(SR_variable = sr_cols, Correlation = correlations)
+
+# display in table format
+kable(cor_df)
 ```
 
 
