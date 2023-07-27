@@ -2,11 +2,7 @@
 title: "Regression to test initial hypothesis (more links better sustainability)"
 author: "AlexSh"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    theme: cosmo
+output: word_document
 ---
 
 ```{r load libraries}
